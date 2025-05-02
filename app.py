@@ -75,11 +75,33 @@ def logout():
     flash('Você foi desconectado com sucesso', 'success')
     return redirect(url_for('login'))
 
-@app.route('/novo_paciente')
+@app.route('/novo_paciente', methods=['POST'])
 @login_required
 def novo_paciente():
-    # Aqui você pode adicionar a lógica de cadastro depois
-    return '<h1>Cadastro de novo paciente (em construção)</h1>'
+    nome = request.form.get('nome')
+    telefone = request.form.get('telefone')
+    cpf = request.form.get('cpf')
+    nascimento = request.form.get('nascimento')
+
+    # Verifica se já existe paciente com o mesmo CPF
+    if Paciente.query.filter_by(cpf=cpf).first():
+        flash('Já existe um paciente cadastrado com este CPF.', 'error')
+        return redirect(url_for('dashboard'))
+
+    try:
+        paciente = Paciente(
+            nome=nome,
+            telefone=telefone,
+            cpf=cpf,
+            nascimento=nascimento
+        )
+        db.session.add(paciente)
+        db.session.commit()
+        flash('Paciente cadastrado com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao cadastrar paciente.', 'error')
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(debug=True) 
