@@ -1,34 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
+from models import db, User, Paciente
 
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'sua_chave_secreta_aqui')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URL')
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
+db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256))
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -88,10 +75,11 @@ def logout():
     flash('Você foi desconectado com sucesso', 'success')
     return redirect(url_for('login'))
 
+@app.route('/novo_paciente')
+@login_required
+def novo_paciente():
+    # Aqui você pode adicionar a lógica de cadastro depois
+    return '<h1>Cadastro de novo paciente (em construção)</h1>'
+
 if __name__ == '__main__':
-    with app.app_context():
-        # Remove todas as tabelas existentes
-        db.drop_all()
-        # Recria todas as tabelas
-        db.create_all()
     app.run(debug=True) 
