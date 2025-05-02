@@ -6,7 +6,7 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="d-flex justify-content-end mb-3">
-            <a href="{{ url_for('novo_paciente') }}" class="btn btn-success">Novo Paciente</a>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente">Novo Paciente</button>
         </div>
         <h1 class="text-center mb-4">Dashboard</h1>
         <div class="card shadow-sm">
@@ -17,4 +17,73 @@
         </div>
     </div>
 </div>
+
+<!-- Modal de Cadastro de Paciente -->
+<div class="modal fade" id="modalNovoPaciente" tabindex="-1" aria-labelledby="modalNovoPacienteLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('novo_paciente') }}">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalNovoPacienteLabel">Novo Paciente</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="nome" class="form-label">Nome</label>
+            <input type="text" class="form-control" id="nome" name="nome" required>
+          </div>
+          <div class="mb-3">
+            <label for="telefone" class="form-label">Telefone</label>
+            <input type="text" class="form-control" id="telefone" name="telefone" required>
+          </div>
+          <div class="mb-3">
+            <label for="cpf" class="form-label">CPF</label>
+            <input type="text" class="form-control" id="cpf" name="cpf" maxlength="14" required placeholder="000.000.000-00">
+          </div>
+          <div class="mb-3">
+            <label for="nascimento" class="form-label">Data de Nascimento</label>
+            <input type="date" class="form-control" id="nascimento" name="nascimento" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Máscara de CPF para o campo do modal
+const cpfInput = document.getElementById('cpf');
+if (cpfInput) {
+    cpfInput.addEventListener('input', function(e) {
+        let value = cpfInput.value.replace(/\D/g, '');
+        if (value.length > 11) value = value.slice(0, 11);
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        cpfInput.value = value;
+    });
+}
+  // Máscara de Telefone
+  const telInput = document.getElementById('telefone');
+    if (telInput) {
+        telInput.addEventListener('input', function(e) {
+            let value = telInput.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            if (value.length > 10) {
+                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            } else if (value.length > 6) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else if (value.length > 2) {
+                value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            } else {
+                value = value.replace(/(\d*)/, '($1');
+            }
+            telInput.value = value;
+        });
+    }
+</script>
 {% endblock %} 
