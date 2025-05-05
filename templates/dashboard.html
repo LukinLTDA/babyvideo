@@ -3,55 +3,154 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="d-flex justify-content-end mb-3">
-            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente">Novo Paciente</button>
+<div class="container-fluid px-4 py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">Bem-vindo, {{ current_user.username }}!</h2>
+                    <p class="text-muted mb-0">Painel de Controle</p>
+                </div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente">
+                    <i class="fas fa-plus me-2"></i>Novo Paciente
+                </button>
+            </div>
         </div>
-        <h1 class="text-center mb-4">Dashboard</h1>
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h2 class="card-title h4 mb-3">Bem-vindo, {{ current_user.username }}!</h2>
-                <p class="card-text text-muted">Você está logado com o email: {{ current_user.email }}</p>
+    </div>
+
+    <!-- Cards de Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Total de Pacientes</h6>
+                            <h2 class="mt-2 mb-0">{{ total_pacientes }}</h2>
+                        </div>
+                        <i class="fas fa-users fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Pacientes do Mês</h6>
+                            <h2 class="mt-2 mb-0">{{ pacientes_mes }}</h2>
+                        </div>
+                        <i class="fas fa-calendar-check fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title mb-0">Próximas Consultas</h6>
+                            <h2 class="mt-2 mb-0">0</h2>
+                        </div>
+                        <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Pacientes -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Lista de Pacientes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                        {% for paciente in pacientes %}
+                        <div class="col">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 class="card-title mb-0">{{ paciente.nome }}</h5>
+                                        <span class="badge bg-light text-dark">
+                                            <i class="fas fa-user me-1"></i>Paciente
+                                        </span>
+                                    </div>
+                                    <div class="card-text">
+                                        <p class="mb-2">
+                                            <i class="fas fa-id-card me-2 text-primary"></i>
+                                            {{ paciente.cpf }}
+                                        </p>
+                                        <p class="mb-2">
+                                            <i class="fas fa-phone me-2 text-success"></i>
+                                            {{ paciente.telefone }}
+                                        </p>
+                                        <p class="mb-2">
+                                            <i class="fas fa-calendar me-2 text-info"></i>
+                                            {{ paciente.nascimento.strftime('%d/%m/%Y') }}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-white border-top-0">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            Cadastrado em {{ paciente.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        </small>
+                                        <button class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye me-1"></i>Detalhes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Modal de Cadastro de Paciente -->
-<div class="modal fade" id="modalNovoPaciente" tabindex="-1" aria-labelledby="modalNovoPacienteLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <form method="POST" action="{{ url_for('novo_paciente') }}">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalNovoPacienteLabel">Novo Paciente</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+<div class="modal fade" id="modalNovoPaciente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('novo_paciente') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Paciente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nome" class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefone" class="form-label">Telefone</label>
+                        <input type="text" class="form-control" id="telefone" name="telefone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cpf" class="form-label">CPF</label>
+                        <input type="text" class="form-control" id="cpf" name="cpf" maxlength="14" required placeholder="000.000.000-00">
+                    </div>
+                    <div class="mb-3">
+                        <label for="nascimento" class="form-label">Data de Nascimento</label>
+                        <input type="date" class="form-control" id="nascimento" name="nascimento" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
         </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="nome" class="form-label">Nome</label>
-            <input type="text" class="form-control" id="nome" name="nome" required>
-          </div>
-          <div class="mb-3">
-            <label for="telefone" class="form-label">Telefone</label>
-            <input type="text" class="form-control" id="telefone" name="telefone" required>
-          </div>
-          <div class="mb-3">
-            <label for="cpf" class="form-label">CPF</label>
-            <input type="text" class="form-control" id="cpf" name="cpf" maxlength="14" required placeholder="000.000.000-00">
-          </div>
-          <div class="mb-3">
-            <label for="nascimento" class="form-label">Data de Nascimento</label>
-            <input type="date" class="form-control" id="nascimento" name="nascimento" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-success">Salvar</button>
-        </div>
-      </form>
     </div>
-  </div>
 </div>
 
 <script>
@@ -67,23 +166,24 @@ if (cpfInput) {
         cpfInput.value = value;
     });
 }
-  // Máscara de Telefone
-  const telInput = document.getElementById('telefone');
-    if (telInput) {
-        telInput.addEventListener('input', function(e) {
-            let value = telInput.value.replace(/\D/g, '');
-            if (value.length > 11) value = value.slice(0, 11);
-            if (value.length > 10) {
-                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-            } else if (value.length > 6) {
-                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-            } else if (value.length > 2) {
-                value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-            } else {
-                value = value.replace(/(\d*)/, '($1');
-            }
-            telInput.value = value;
-        });
-    }
+
+// Máscara de Telefone
+const telInput = document.getElementById('telefone');
+if (telInput) {
+    telInput.addEventListener('input', function(e) {
+        let value = telInput.value.replace(/\D/g, '');
+        if (value.length > 11) value = value.slice(0, 11);
+        if (value.length > 10) {
+            value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        } else if (value.length > 6) {
+            value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        } else if (value.length > 2) {
+            value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+        } else {
+            value = value.replace(/(\d*)/, '($1');
+        }
+        telInput.value = value;
+    });
+}
 </script>
 {% endblock %} 
