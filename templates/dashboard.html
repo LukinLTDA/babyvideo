@@ -136,7 +136,7 @@
 <div class="modal fade" id="modalNovoPaciente" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST" action="{{ url_for('novo_paciente') }}">
+            <form method="POST" action="{{ url_for('novo_paciente') }}" onsubmit="return handleNovoPaciente(event)">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Paciente</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -433,5 +433,116 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+// Função para lidar com o envio do formulário de novo paciente
+function handleNovoPaciente(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    
+    fetch('/novo_paciente', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Fecha o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoPaciente'));
+        modal.hide();
+        
+        // Mostra o toast de sucesso
+        const toast = document.getElementById('toastNotificacao');
+        toast.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+        toast.querySelector('.toast-header i').className = 'fas fa-check-circle me-2';
+        toast.querySelector('.toast-body').textContent = 'Paciente cadastrado com sucesso!';
+        new bootstrap.Toast(toast, { delay: 3000 }).show();
+
+        // Cria o novo card do paciente
+        const pacientesContainer = document.querySelector('.row-cols-1');
+        const novoCard = criarCardPaciente(data);
+        pacientesContainer.insertBefore(novoCard, pacientesContainer.firstChild);
+        
+        // Atualiza os contadores
+        const totalPacientes = document.querySelector('.card.bg-primary h2');
+        const pacientesMes = document.querySelector('.card.bg-success h2');
+        if (totalPacientes) totalPacientes.textContent = parseInt(totalPacientes.textContent) + 1;
+        if (pacientesMes) pacientesMes.textContent = parseInt(pacientesMes.textContent) + 1;
+
+        // Limpa o formulário
+        form.reset();
+    })
+    .catch(error => {
+        console.error('Erro ao cadastrar paciente:', error);
+        const toast = document.getElementById('toastNotificacao');
+        toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+        toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
+        toast.querySelector('.toast-body').textContent = 'Erro ao cadastrar paciente';
+        new bootstrap.Toast(toast, { delay: 3000 }).show();
+    });
+    
+    return false;
+}
+
+// Função auxiliar para criar o card do paciente
+function criarCardPaciente(paciente) {
+    const col = document.createElement('div');
+    col.className = 'col';
+    
+    col.innerHTML = `
+        <div class="card h-100 border-0 shadow-sm" data-paciente-id="${paciente.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="card-title mb-0">${paciente.nome}</h5>
+                    <span class="badge bg-light text-dark">
+                        <i class="fas fa-user me-1"></i>Paciente
+                    </span>
+                </div>
+                <div class="card-text">
+                    <p class="mb-2">
+                        <i class="fas fa-id-card me-2 text-primary"></i>
+                        <span data-cpf>${paciente.cpf}</span>
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-phone me-2 text-success"></i>
+                        <span data-telefone>${paciente.telefone}</span>
+                    </p>
+                    <p class="mb-2">
+                        <i class="fas fa-calendar me-2 text-info"></i>
+                        <span data-nascimento>${paciente.nascimento}</span>
+                    </p>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-top-0">
+                <div class="d-flex flex-column">
+                    <small class="text-muted mb-2">
+                        <i class="fas fa-clock me-1"></i>
+                        Cadastrado em ${new Date().toLocaleString()}
+                    </small>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary flex-grow-1" 
+                                title="Editar Paciente"
+                                onclick="editarPaciente('${paciente.id}')">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger flex-grow-1" 
+                                title="Excluir Paciente"
+                                onclick="confirmarExclusao('${paciente.id}', '${paciente.nome}')">
+                            <i class="fas fa-trash me-1"></i>Excluir
+                        </button>
+                        <button class="btn btn-sm btn-outline-success flex-grow-1" title="Adicionar BabyVideo">
+                            <i class="fas fa-video me-1"></i>BabyVideo
+                        </button>
+                        <button class="btn btn-sm btn-outline-info flex-grow-1" title="Nova Consulta">
+                            <i class="fas fa-calendar-plus me-1"></i>Consulta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return col;
+}
 </script>
 {% endblock %} 
