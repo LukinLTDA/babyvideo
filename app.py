@@ -149,8 +149,10 @@ def novo_paciente():
 
     # Verifica se já existe paciente com o mesmo CPF
     if Paciente.query.filter_by(cpf=cpf).first():
-        flash('Já existe um paciente cadastrado com este CPF.', 'error')
-        return redirect(url_for('dashboard'))
+        return jsonify({
+            'success': False,
+            'message': 'Já existe um paciente cadastrado com este CPF.'
+        }), 400
 
     try:
         paciente = Paciente(
@@ -161,11 +163,22 @@ def novo_paciente():
         )
         db.session.add(paciente)
         db.session.commit()
-        flash('Paciente cadastrado com sucesso!', 'success')
+        
+        # Retorna os dados do novo paciente
+        return jsonify({
+            'success': True,
+            'id': paciente.id,
+            'nome': paciente.nome,
+            'telefone': paciente.telefone,
+            'cpf': paciente.cpf,
+            'nascimento': paciente.nascimento.strftime('%d/%m/%Y')
+        })
     except Exception as e:
         db.session.rollback()
-        flash('Erro ao cadastrar paciente.', 'error')
-    return redirect(url_for('dashboard'))
+        return jsonify({
+            'success': False,
+            'message': 'Erro ao cadastrar paciente.'
+        }), 500
 
 @app.route('/paciente/<int:id>')
 @login_required
