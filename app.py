@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -28,12 +28,28 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # Verifica se é login de paciente
+        if 'cpf' in request.form:
+            cpf = request.form.get('cpf')
+            nascimento = request.form.get('nascimento')
+            
+            paciente = Paciente.query.filter_by(cpf=cpf).first()
+            if paciente and str(paciente.nascimento) == nascimento:
+                session['paciente_id'] = paciente.id
+                session['tipo_usuario'] = 'paciente'
+                flash('Login realizado com sucesso!', 'success')
+                return redirect(url_for('dashboard_paciente'))
+            flash('CPF ou data de nascimento inválidos', 'error')
+            return render_template('login.html')
+            
+        # Login de usuário clínica
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
             login_user(user)
+            session['tipo_usuario'] = 'clinica'
             flash('Login realizado com sucesso!', 'success')
             return redirect(url_for('dashboard'))
         flash('Usuário ou senha inválidos', 'error')
@@ -68,10 +84,26 @@ def register():
 def dashboard():
     return render_template('dashboard.html')
 
+@app.route('/dashboard_paciente')
+def dashboard_paciente():
+    if 'paciente_id' not in session:
+        flash('Por favor, faça login primeiro', 'error')
+        return redirect(url_for('login'))
+        
+    paciente = Paciente.query.get(session['paciente_id'])
+    if not paciente:
+        session.clear()
+        flash('Paciente não encontrado', 'error')
+        return redirect(url_for('login'))
+        
+    return render_template('dashboard_paciente.html', paciente=paciente)
+
 @app.route('/logout')
-@login_required
 def logout():
-    logout_user()
+    if 'tipo_usuario' in session:
+        if session['tipo_usuario'] == 'clinica':
+            logout_user()
+        session.clear()
     flash('Você foi desconectado com sucesso', 'success')
     return redirect(url_for('login'))
 
