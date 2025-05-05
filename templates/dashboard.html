@@ -108,7 +108,9 @@
                                                     onclick="editarPaciente('{{ paciente.id }}')">
                                                 <i class="fas fa-edit me-1"></i>Editar
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger flex-grow-1" title="Excluir Paciente">
+                                            <button class="btn btn-sm btn-outline-danger flex-grow-1" 
+                                                    title="Excluir Paciente"
+                                                    onclick="confirmarExclusao('{{ paciente.id }}', '{{ paciente.nome }}')">
                                                 <i class="fas fa-trash me-1"></i>Excluir
                                             </button>
                                             <button class="btn btn-sm btn-outline-success flex-grow-1" title="Adicionar BabyVideo">
@@ -222,6 +224,26 @@
     </div>
 </div>
 
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalConfirmacaoExclusao" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o paciente <strong id="nomePacienteExclusao"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">Sim, Excluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast de Notificação -->
 <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
     <div id="toastNotificacao" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -267,6 +289,16 @@ function salvarEdicaoPaciente() {
     // Abre o modal de confirmação
     const modalConfirmacao = new bootstrap.Modal(document.getElementById('modalConfirmacao'));
     modalConfirmacao.show();
+}
+
+// Função para confirmar exclusão
+function confirmarExclusao(id, nome) {
+    // Armazena o ID do paciente para uso posterior
+    document.getElementById('btnConfirmarExclusao').dataset.pacienteId = id;
+    // Atualiza o nome do paciente no modal
+    document.getElementById('nomePacienteExclusao').textContent = nome;
+    // Abre o modal
+    new bootstrap.Modal(document.getElementById('modalConfirmacaoExclusao')).show();
 }
 
 // Configura o botão de confirmação
@@ -320,6 +352,49 @@ document.getElementById('btnConfirmarSalvar').addEventListener('click', function
         toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
         toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
         toast.querySelector('.toast-body').textContent = 'Erro ao salvar alterações';
+        new bootstrap.Toast(toast, { delay: 2700 }).show();
+    });
+});
+
+// Configura o botão de confirmação de exclusão
+document.getElementById('btnConfirmarExclusao').addEventListener('click', function() {
+    const pacienteId = this.dataset.pacienteId;
+    
+    fetch(`/excluir_paciente/${pacienteId}`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Fecha o modal
+            bootstrap.Modal.getInstance(document.getElementById('modalConfirmacaoExclusao')).hide();
+            
+            // Remove o card do paciente da página
+            const card = document.querySelector(`[data-paciente-id="${pacienteId}"]`).closest('.col');
+            card.remove();
+            
+            // Mostra o toast de sucesso
+            const toast = document.getElementById('toastNotificacao');
+            toast.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+            toast.querySelector('.toast-header i').className = 'fas fa-check-circle me-2';
+            toast.querySelector('.toast-body').textContent = 'Paciente excluído com sucesso!';
+            new bootstrap.Toast(toast, { delay: 2700 }).show();
+        } else {
+            // Atualiza e mostra o toast de erro
+            const toast = document.getElementById('toastNotificacao');
+            toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+            toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
+            toast.querySelector('.toast-body').textContent = data.message || 'Erro ao excluir paciente';
+            new bootstrap.Toast(toast, { delay: 2700 }).show();
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao excluir paciente:', error);
+        // Atualiza e mostra o toast de erro
+        const toast = document.getElementById('toastNotificacao');
+        toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+        toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
+        toast.querySelector('.toast-body').textContent = 'Erro ao excluir paciente';
         new bootstrap.Toast(toast, { delay: 2700 }).show();
     });
 });
