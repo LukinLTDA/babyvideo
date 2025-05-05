@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
 from models import db, User, Paciente
+from datetime import datetime, timezone
+from sqlalchemy import text
 
 load_dotenv()
 
@@ -12,7 +14,25 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'sua_chave_secreta_aqui')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Inicializa o banco de dados
 db.init_app(app)
+
+# Cria as tabelas se não existirem
+def init_db():
+    with app.app_context():
+        try:
+            # Verifica se as tabelas existem
+            with db.engine.connect() as conn:
+                conn.execute(text("SELECT 1 FROM paciente LIMIT 1"))
+                conn.commit()
+        except Exception:
+            # Se não existirem, cria as tabelas
+            db.create_all()
+            print("Tabelas criadas com sucesso!")
+
+# Inicializa o banco de dados
+init_db()
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -82,7 +102,19 @@ def register():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return render_template('dashboard.html')
+    # Busca todos os pacientes ordenados por data de criação
+    pacientes = Paciente.query.order_by(Paciente.created_at.desc()).all()
+    
+    # Calcula o primeiro dia do mês atual
+    primeiro_dia_mes = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Filtra pacientes do mês
+    pacientes_mes = [p for p in pacientes if p.created_at >= primeiro_dia_mes]
+    
+    return render_template('dashboard.html', 
+                         pacientes=pacientes,
+                         total_pacientes=len(pacientes),
+                         pacientes_mes=len(pacientes_mes))
 
 @app.route('/dashboard_paciente')
 def dashboard_paciente():
