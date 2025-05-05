@@ -24,10 +24,27 @@ const btnClinica = document.getElementById('btn-clinica');
 const btnPaciente = document.getElementById('btn-paciente');
 const formClinica = document.getElementById('form-clinica');
 const formPaciente = document.getElementById('form-paciente');
+const cpfInput = document.getElementById('cpf');
 
 // Inicializa o formulário correto ao carregar a página
 setLoginType(getLoginTypeFromUrl());
 
+// Função para formatar CPF
+function formatarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    return cpf;
+}
+
+// Evento para formatar CPF enquanto digita
+cpfInput.addEventListener('input', function(e) {
+    let value = e.target.value;
+    e.target.value = formatarCPF(value);
+});
+
+// Eventos dos botões
 btnClinica.addEventListener('click', function() {
     setLoginType('clinica');
     const url = new URL(window.location);
