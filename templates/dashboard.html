@@ -73,7 +73,7 @@
                     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                         {% for paciente in pacientes %}
                         <div class="col">
-                            <div class="card h-100 border-0 shadow-sm">
+                            <div class="card h-100 border-0 shadow-sm" data-paciente-id="{{ paciente.id }}">
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-start mb-3">
                                         <h5 class="card-title mb-0">{{ paciente.nome }}</h5>
@@ -84,15 +84,15 @@
                                     <div class="card-text">
                                         <p class="mb-2">
                                             <i class="fas fa-id-card me-2 text-primary"></i>
-                                            {{ paciente.cpf }}
+                                            <span data-cpf>{{ paciente.cpf }}</span>
                                         </p>
                                         <p class="mb-2">
                                             <i class="fas fa-phone me-2 text-success"></i>
-                                            {{ paciente.telefone }}
+                                            <span data-telefone>{{ paciente.telefone }}</span>
                                         </p>
                                         <p class="mb-2">
                                             <i class="fas fa-calendar me-2 text-info"></i>
-                                            {{ paciente.nascimento.strftime('%d/%m/%Y') }}
+                                            <span data-nascimento>{{ paciente.nascimento.strftime('%d/%m/%Y') }}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -103,7 +103,9 @@
                                             Cadastrado em {{ paciente.created_at.strftime('%d/%m/%Y %H:%M') }}
                                         </small>
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-sm btn-outline-primary flex-grow-1" title="Editar Paciente">
+                                            <button class="btn btn-sm btn-outline-primary flex-grow-1" 
+                                                    title="Editar Paciente"
+                                                    onclick="editarPaciente('{{ paciente.id }}')">
                                                 <i class="fas fa-edit me-1"></i>Editar
                                             </button>
                                             <button class="btn btn-sm btn-outline-danger flex-grow-1" title="Excluir Paciente">
@@ -164,37 +166,197 @@
     </div>
 </div>
 
+<!-- Modal de Edição de Paciente -->
+<div class="modal fade" id="modalEditarPaciente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Paciente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarPaciente">
+                    <input type="hidden" id="edit_paciente_id" name="id">
+                    <div class="mb-3">
+                        <label for="edit_nome" class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="edit_nome" name="nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_telefone" class="form-label">Telefone</label>
+                        <input type="text" class="form-control" id="edit_telefone" name="telefone" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_cpf" class="form-label">CPF</label>
+                        <input type="text" class="form-control" id="edit_cpf" name="cpf" maxlength="14" required placeholder="000.000.000-00">
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_nascimento" class="form-label">Data de Nascimento</label>
+                        <input type="date" class="form-control" id="edit_nascimento" name="nascimento" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEdicaoPaciente()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="modalConfirmacao" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Alterações</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja salvar as alterações?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarSalvar">Sim, Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast de Notificação -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
+    <div id="toastNotificacao" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Sucesso</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Paciente atualizado com sucesso!
+        </div>
+    </div>
+</div>
+
 <script>
-// Máscara de CPF para o campo do modal
-const cpfInput = document.getElementById('cpf');
-if (cpfInput) {
-    cpfInput.addEventListener('input', function(e) {
-        let value = cpfInput.value.replace(/\D/g, '');
-        if (value.length > 11) value = value.slice(0, 11);
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d)/, '$1.$2');
-        value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        cpfInput.value = value;
-    });
+// Função para abrir o modal de edição
+function editarPaciente(id) {
+    // Converte o ID para número
+    const pacienteId = parseInt(id);
+    
+    // Busca os dados do paciente
+    fetch(`/paciente/${pacienteId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Preenche o formulário com os dados
+            document.getElementById('edit_paciente_id').value = data.id;
+            document.getElementById('edit_nome').value = data.nome;
+            document.getElementById('edit_telefone').value = data.telefone;
+            document.getElementById('edit_cpf').value = data.cpf;
+            document.getElementById('edit_nascimento').value = data.nascimento;
+            
+            // Abre o modal
+            new bootstrap.Modal(document.getElementById('modalEditarPaciente')).show();
+        })
+        .catch(error => {
+            console.error('Erro ao buscar dados do paciente:', error);
+            alert('Erro ao carregar dados do paciente');
+        });
 }
 
-// Máscara de Telefone
-const telInput = document.getElementById('telefone');
-if (telInput) {
-    telInput.addEventListener('input', function(e) {
-        let value = telInput.value.replace(/\D/g, '');
-        if (value.length > 11) value = value.slice(0, 11);
-        if (value.length > 10) {
-            value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-        } else if (value.length > 6) {
-            value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-        } else if (value.length > 2) {
-            value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-        } else {
-            value = value.replace(/(\d*)/, '($1');
-        }
-        telInput.value = value;
-    });
+// Função para salvar a edição
+function salvarEdicaoPaciente() {
+    // Abre o modal de confirmação
+    const modalConfirmacao = new bootstrap.Modal(document.getElementById('modalConfirmacao'));
+    modalConfirmacao.show();
 }
+
+// Configura o botão de confirmação
+document.getElementById('btnConfirmarSalvar').addEventListener('click', function() {
+    const form = document.getElementById('formEditarPaciente');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    fetch('/editar_paciente', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Fecha os modais
+            bootstrap.Modal.getInstance(document.getElementById('modalConfirmacao')).hide();
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarPaciente')).hide();
+            
+            // Atualiza o card do paciente na página
+            const card = document.querySelector(`[data-paciente-id="${data.paciente.id}"]`);
+            if (card) {
+                card.querySelector('.card-title').textContent = data.paciente.nome;
+                card.querySelector('[data-cpf]').textContent = data.paciente.cpf;
+                card.querySelector('[data-telefone]').textContent = data.paciente.telefone;
+                card.querySelector('[data-nascimento]').textContent = data.paciente.nascimento;
+            }
+            
+            // Mostra o toast de sucesso
+            const toast = document.getElementById('toastNotificacao');
+            toast.querySelector('.toast-header').className = 'toast-header bg-success text-white';
+            toast.querySelector('.toast-header i').className = 'fas fa-check-circle me-2';
+            toast.querySelector('.toast-body').textContent = 'Paciente atualizado com sucesso!';
+            new bootstrap.Toast(toast, { delay: 2700 }).show();
+        } else {
+            // Atualiza e mostra o toast de erro
+            const toast = document.getElementById('toastNotificacao');
+            toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+            toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
+            toast.querySelector('.toast-body').textContent = data.message || 'Erro ao atualizar paciente';
+            new bootstrap.Toast(toast, { delay: 2700 }).show();
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao salvar edição:', error);
+        // Atualiza e mostra o toast de erro
+        const toast = document.getElementById('toastNotificacao');
+        toast.querySelector('.toast-header').className = 'toast-header bg-danger text-white';
+        toast.querySelector('.toast-header i').className = 'fas fa-exclamation-circle me-2';
+        toast.querySelector('.toast-body').textContent = 'Erro ao salvar alterações';
+        new bootstrap.Toast(toast, { delay: 2700 }).show();
+    });
+});
+
+// Máscaras para os campos
+document.addEventListener('DOMContentLoaded', function() {
+    // Máscara de CPF
+    const cpfInputs = document.querySelectorAll('input[name="cpf"]');
+    cpfInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            e.target.value = value;
+        });
+    });
+
+    // Máscara de Telefone
+    const telInputs = document.querySelectorAll('input[name="telefone"]');
+    telInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 11) value = value.slice(0, 11);
+            if (value.length > 10) {
+                value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            } else if (value.length > 6) {
+                value = value.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+            } else if (value.length > 2) {
+                value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            } else {
+                value = value.replace(/(\d*)/, '($1');
+            }
+            e.target.value = value;
+        });
+    });
+});
 </script>
 {% endblock %} 
