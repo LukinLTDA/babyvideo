@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
@@ -166,6 +166,57 @@ def novo_paciente():
         db.session.rollback()
         flash('Erro ao cadastrar paciente.', 'error')
     return redirect(url_for('dashboard'))
+
+@app.route('/paciente/<int:id>')
+@login_required
+def get_paciente(id):
+    paciente = Paciente.query.get_or_404(id)
+    return jsonify({
+        'id': paciente.id,
+        'nome': paciente.nome,
+        'telefone': paciente.telefone,
+        'cpf': paciente.cpf,
+        'nascimento': paciente.nascimento.strftime('%Y-%m-%d')
+    })
+
+@app.route('/editar_paciente', methods=['POST'])
+@login_required
+def editar_paciente():
+    data = request.get_json()
+    paciente = Paciente.query.get_or_404(data['id'])
+    
+    # Verifica se o CPF já existe para outro paciente
+    if data['cpf'] != paciente.cpf:
+        if Paciente.query.filter_by(cpf=data['cpf']).first():
+            return jsonify({
+                'success': False,
+                'message': 'Já existe um paciente cadastrado com este CPF.'
+            })
+    
+    try:
+        paciente.nome = data['nome']
+        paciente.telefone = data['telefone']
+        paciente.cpf = data['cpf']
+        paciente.nascimento = datetime.strptime(data['nascimento'], '%Y-%m-%d').date()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'paciente': {
+                'id': paciente.id,
+                'nome': paciente.nome,
+                'telefone': paciente.telefone,
+                'cpf': paciente.cpf,
+                'nascimento': paciente.nascimento.strftime('%d/%m/%Y')
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'Erro ao atualizar paciente.'
+        })
 
 if __name__ == '__main__':
     app.run(debug=True) 
