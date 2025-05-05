@@ -102,8 +102,8 @@ def register():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    # Busca todos os pacientes ordenados por data de criação
-    pacientes = Paciente.query.order_by(Paciente.created_at.desc()).all()
+    # Busca todos os pacientes não excluídos ordenados por data de criação
+    pacientes = Paciente.query.filter_by(deleted_at=None).order_by(Paciente.created_at.desc()).all()
     
     # Calcula o primeiro dia do mês atual
     primeiro_dia_mes = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -216,6 +216,27 @@ def editar_paciente():
         return jsonify({
             'success': False,
             'message': 'Erro ao atualizar paciente.'
+        })
+
+@app.route('/excluir_paciente/<int:id>', methods=['POST'])
+@login_required
+def excluir_paciente(id):
+    paciente = Paciente.query.get_or_404(id)
+    
+    try:
+        # Soft delete - apenas marca como excluído
+        paciente.deleted_at = datetime.now(timezone.utc)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Paciente excluído com sucesso!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'Erro ao excluir paciente.'
         })
 
 if __name__ == '__main__':
