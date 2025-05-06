@@ -3,14 +3,16 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
+<div class="container-fluid px-2 px-md-4 py-3">
     <!-- Cabeçalho -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h2 class="mb-1">Bem-vindo, {{ current_user.username }}!</h2>
-                    <p class="text-muted mb-0">Painel de Controle</p>
+                    <h2 class="h3 mb-1">
+                        <i class="fas fa-hospital me-2 text-primary"></i>Dashboard da Clínica
+                    </h2>
+                    <p class="text-muted mb-0">Bem-vindo(a), {{ current_user.username }}</p>
                 </div>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente">
                     <i class="fas fa-plus me-2"></i>Novo Paciente
@@ -22,7 +24,7 @@
     <!-- Cards de Estatísticas -->
     <div class="row mb-4">
         <div class="col-md-4">
-            <div class="card bg-primary text-white">
+            <div class="card bg-primary text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -35,7 +37,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-success text-white">
+            <div class="card bg-success text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -48,7 +50,7 @@
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card bg-info text-white">
+            <div class="card bg-info text-white shadow-sm">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -65,9 +67,11 @@
     <!-- Lista de Pacientes -->
     <div class="row">
         <div class="col-12">
-            <div class="card">
+            <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">Lista de Pacientes</h5>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2 text-primary"></i>Lista de Pacientes
+                    </h5>
                 </div>
                 <div class="card-body">
                     <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
@@ -113,7 +117,10 @@
                                                     onclick="confirmarExclusao('{{ paciente.id }}', '{{ paciente.nome }}')">
                                                 <i class="fas fa-trash me-1"></i>Excluir
                                             </button>
-                                            <button class="btn btn-sm btn-outline-success flex-grow-1" title="Adicionar BabyVideo">
+                                            <button class="btn btn-sm btn-outline-success flex-grow-1" 
+                                                    title="Adicionar BabyVideo"
+                                                    data-babyvideo-url="{{ url_for('babyvideo', paciente_id=paciente.id) }}"
+                                                    onclick="navegarParaBabyVideo(this)">
                                                 <i class="fas fa-video me-1"></i>BabyVideo
                                             </button>
                                             <button class="btn btn-sm btn-outline-info flex-grow-1" title="Nova Consulta">
@@ -138,7 +145,9 @@
         <div class="modal-content">
             <form method="POST" action="{{ url_for('novo_paciente') }}" onsubmit="return handleNovoPaciente(event)">
                 <div class="modal-header">
-                    <h5 class="modal-title">Novo Paciente</h5>
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus me-2"></i>Novo Paciente
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -173,7 +182,9 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Editar Paciente</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Editar Paciente
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -210,7 +221,9 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmar Alterações</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-question-circle me-2"></i>Confirmar Alterações
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -229,7 +242,9 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Confirmar Exclusão
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -256,6 +271,14 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script src="{{ url_for('static', filename='scripts/dashboard.js') }}"></script>
+<script>
+function navegarParaBabyVideo(button) {
+    const url = button.getAttribute('data-babyvideo-url');
+    window.location.href = url;
+}
+</script>
 {% endblock %}

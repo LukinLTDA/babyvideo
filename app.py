@@ -3,9 +3,10 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
-from models import db, User, Paciente
+from models import db, User, Paciente, Video
 from datetime import datetime, timezone
 from sqlalchemy import text
+import uuid
 
 load_dotenv()
 
@@ -48,14 +49,17 @@ def index():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Verifica se é login de paciente
-        if 'cpf' in request.form:
+        tipo = request.form.get('tipo')
+        
+        # Login de paciente
+        if tipo == 'paciente':
             cpf = request.form.get('cpf')
             nascimento = request.form.get('nascimento')
             
             paciente = Paciente.query.filter_by(cpf=cpf).first()
             if paciente and str(paciente.nascimento) == nascimento:
                 session['paciente_id'] = paciente.id
+                session['paciente_nome'] = paciente.nome
                 session['tipo_usuario'] = 'paciente'
                 flash('Login realizado com sucesso!', 'success')
                 return redirect(url_for('dashboard_paciente'))
@@ -73,7 +77,10 @@ def login():
             flash('Login realizado com sucesso!', 'success')
             return redirect(url_for('dashboard'))
         flash('Usuário ou senha inválidos', 'error')
-    return render_template('login.html')
+    
+    # Verifica o tipo de login na URL para mostrar o formulário correto
+    tipo = request.args.get('tipo', 'clinica')
+    return render_template('login.html', tipo=tipo)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -105,11 +112,14 @@ def dashboard():
     # Busca todos os pacientes não excluídos ordenados por data de criação
     pacientes = Paciente.query.filter_by(deleted_at=None).order_by(Paciente.created_at.desc()).all()
     
-    # Calcula o primeiro dia do mês atual
+    # Calcula o primeiro dia do mês atual (com timezone UTC)
     primeiro_dia_mes = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
-    # Filtra pacientes do mês
-    pacientes_mes = [p for p in pacientes if p.created_at >= primeiro_dia_mes]
+    # Filtra pacientes do mês, garantindo que todas as datas estejam em UTC
+    pacientes_mes = [
+        p for p in pacientes 
+        if p.created_at.replace(tzinfo=timezone.utc) >= primeiro_dia_mes
+    ]
     
     return render_template('dashboard.html', 
                          pacientes=pacientes,
@@ -118,17 +128,18 @@ def dashboard():
 
 @app.route('/dashboard_paciente')
 def dashboard_paciente():
-    if 'paciente_id' not in session:
+    if 'paciente_id' not in session or session.get('tipo_usuario') != 'paciente':
         flash('Por favor, faça login primeiro', 'error')
         return redirect(url_for('login'))
-        
-    paciente = Paciente.query.get(session['paciente_id'])
+    
+    paciente = db.session.get(Paciente, session['paciente_id'])
     if not paciente:
         session.clear()
         flash('Paciente não encontrado', 'error')
         return redirect(url_for('login'))
-        
-    return render_template('dashboard_paciente.html', paciente=paciente)
+    
+    videos = Video.query.filter_by(paciente_id=paciente.id).order_by(Video.created_at.desc()).all()
+    return render_template('dashboard_paciente.html', paciente=paciente, videos=videos)
 
 @app.route('/logout')
 def logout():
@@ -183,7 +194,9 @@ def novo_paciente():
 @app.route('/paciente/<int:id>')
 @login_required
 def get_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = db.session.get(Paciente, id)
+    if not paciente:
+        return jsonify({'error': 'Paciente não encontrado'}), 404
     return jsonify({
         'id': paciente.id,
         'nome': paciente.nome,
@@ -196,7 +209,12 @@ def get_paciente(id):
 @login_required
 def editar_paciente():
     data = request.get_json()
-    paciente = Paciente.query.get_or_404(data['id'])
+    paciente = db.session.get(Paciente, data['id'])
+    if not paciente:
+        return jsonify({
+            'success': False,
+            'message': 'Paciente não encontrado.'
+        })
     
     # Verifica se o CPF já existe para outro paciente
     if data['cpf'] != paciente.cpf:
@@ -234,7 +252,12 @@ def editar_paciente():
 @app.route('/excluir_paciente/<int:id>', methods=['POST'])
 @login_required
 def excluir_paciente(id):
-    paciente = Paciente.query.get_or_404(id)
+    paciente = db.session.get(Paciente, id)
+    if not paciente:
+        return jsonify({
+            'success': False,
+            'message': 'Paciente não encontrado.'
+        })
     
     try:
         # Soft delete - apenas marca como excluído
@@ -251,6 +274,89 @@ def excluir_paciente(id):
             'success': False,
             'message': 'Erro ao excluir paciente.'
         })
+
+@app.route('/babyvideo/<int:paciente_id>')
+@login_required
+def babyvideo(paciente_id):
+    paciente = db.session.get(Paciente, paciente_id)
+    if not paciente:
+        flash('Paciente não encontrado', 'error')
+        return redirect(url_for('dashboard'))
+    videos = Video.query.filter_by(paciente_id=paciente_id).order_by(Video.created_at.desc()).all()
+    return render_template('babyvideo.html', paciente=paciente, videos=videos)
+
+@app.route('/novo_video', methods=['POST'])
+@login_required
+def novo_video():
+    if 'video' not in request.files:
+        return jsonify({'success': False, 'message': 'Nenhum arquivo enviado'})
+    
+    video = request.files['video']
+    if video.filename == '':
+        return jsonify({'success': False, 'message': 'Nenhum arquivo selecionado'})
+    
+    if video:
+        try:
+            # Salva o arquivo e obtém a URL
+            url = salvar_arquivo(video)
+            
+            # Cria o novo vídeo no banco de dados
+            novo_video = Video(
+                titulo=request.form.get('titulo'),
+                descricao=request.form.get('descricao'),
+                paciente_id=request.form.get('paciente_id'),
+                url=url
+            )
+            
+            db.session.add(novo_video)
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'video': novo_video.to_dict()
+            })
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'Erro ao processar o vídeo: {str(e)}'
+            })
+    
+    return jsonify({'success': False, 'message': 'Erro ao processar o vídeo'})
+
+@app.route('/videos_paciente')
+@login_required
+def videos_paciente():
+    paciente_id = request.args.get('paciente_id')
+    videos = Video.query.filter_by(paciente_id=paciente_id).order_by(Video.created_at.desc()).all()
+    return jsonify({
+        'success': True,
+        'videos': [video.to_dict() for video in videos]
+    })
+
+@app.route('/excluir_video/<int:video_id>', methods=['POST'])
+@login_required
+def excluir_video(video_id):
+    video = Video.query.get_or_404(video_id)
+    db.session.delete(video)
+    db.session.commit()
+    return jsonify({'success': True})
+
+def salvar_arquivo(arquivo):
+    # Usa a pasta videos existente
+    upload_dir = os.path.join(app.static_folder, 'videos')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Gera um nome único para o arquivo
+    extensao = os.path.splitext(arquivo.filename)[1]
+    nome_arquivo = f"{uuid.uuid4()}{extensao}"
+    
+    # Salva o arquivo
+    caminho_arquivo = os.path.join(upload_dir, nome_arquivo)
+    arquivo.save(caminho_arquivo)
+    
+    # Retorna a URL relativa do arquivo
+    return f"/static/videos/{nome_arquivo}"
 
 if __name__ == '__main__':
     app.run(debug=True) 
