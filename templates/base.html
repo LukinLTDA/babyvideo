@@ -78,6 +78,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='script/notification.js') }}"></script>
+    <script>
+        // Inicializa os toasts apenas quando houver mensagens flash
+        document.addEventListener('DOMContentLoaded', function () {
+            const toastElList = document.querySelectorAll('.toast');
+            if (toastElList.length > 0) {
+                toastElList.forEach(function (toastEl) {
+                    const toast = new bootstrap.Toast(toastEl);
+                    toast.show();
+                });
+            }
+        });
+    </script>
 </body>
 </html> 
