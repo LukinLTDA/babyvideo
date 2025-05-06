@@ -3,7 +3,7 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
-from models import db, User, Paciente, Video
+from models import db, User, Paciente, Video, Medico
 from datetime import datetime, timezone
 from sqlalchemy import text
 import uuid
@@ -24,12 +24,26 @@ def init_db():
         try:
             # Verifica se as tabelas existem
             with db.engine.connect() as conn:
-                conn.execute(text("SELECT 1 FROM paciente LIMIT 1"))
+                conn.execute(text("SELECT 1 FROM medico LIMIT 1"))
                 conn.commit()
         except Exception:
             # Se não existirem, cria as tabelas
             db.create_all()
             print("Tabelas criadas com sucesso!")
+            
+            # Adiciona médicos de exemplo
+            medicos_exemplo = [
+                Medico(nome="Dr. João Silva", crm="12345-SP", especialidade="Pediatra"),
+                Medico(nome="Dra. Maria Santos", crm="67890-SP", especialidade="Ginecologista"),
+                Medico(nome="Dr. Pedro Oliveira", crm="54321-SP", especialidade="Clínico Geral")
+            ]
+            
+            for medico in medicos_exemplo:
+                if not Medico.query.filter_by(crm=medico.crm).first():
+                    db.session.add(medico)
+            
+            db.session.commit()
+            print("Médicos de exemplo adicionados com sucesso!")
 
 # Inicializa o banco de dados
 init_db()
@@ -341,6 +355,127 @@ def excluir_video(video_id):
     db.session.delete(video)
     db.session.commit()
     return jsonify({'success': True})
+
+@app.route('/consulta/<int:paciente_id>')
+@login_required
+def consulta(paciente_id):
+    paciente = db.session.get(Paciente, paciente_id)
+    if not paciente:
+        flash('Paciente não encontrado', 'error')
+        return redirect(url_for('dashboard'))
+    
+    medicos = Medico.query.order_by(Medico.nome).all()
+    return render_template('consulta.html', paciente=paciente, medicos=medicos)
+
+@app.route('/novo_medico', methods=['POST'])
+@login_required
+def novo_medico():
+    nome = request.form.get('nome')
+    crm = request.form.get('crm')
+    especialidade = request.form.get('especialidade')
+
+    # Verifica se já existe médico com o mesmo CRM
+    if Medico.query.filter_by(crm=crm).first():
+        return jsonify({
+            'success': False,
+            'message': 'Já existe um médico cadastrado com este CRM.'
+        }), 400
+
+    try:
+        medico = Medico(
+            nome=nome,
+            crm=crm,
+            especialidade=especialidade
+        )
+        db.session.add(medico)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'medico': medico.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao cadastrar médico: {str(e)}'
+        }), 500
+
+@app.route('/medicos')
+@login_required
+def medicos():
+    medicos = Medico.query.order_by(Medico.nome).all()
+    return render_template('medicos.html', medicos=medicos)
+
+@app.route('/medico/<int:id>')
+@login_required
+def get_medico(id):
+    medico = db.session.get(Medico, id)
+    if not medico:
+        return jsonify({'error': 'Médico não encontrado'}), 404
+    return jsonify(medico.to_dict())
+
+@app.route('/editar_medico', methods=['POST'])
+@login_required
+def editar_medico():
+    data = request.form
+    medico = db.session.get(Medico, data['id'])
+    if not medico:
+        return jsonify({
+            'success': False,
+            'message': 'Médico não encontrado.'
+        })
+    
+    # Verifica se o CRM já existe para outro médico
+    if data['crm'] != medico.crm:
+        if Medico.query.filter_by(crm=data['crm']).first():
+            return jsonify({
+                'success': False,
+                'message': 'Já existe um médico cadastrado com este CRM.'
+            })
+    
+    try:
+        medico.nome = data['nome']
+        medico.crm = data['crm']
+        medico.especialidade = data['especialidade']
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'medico': medico.to_dict()
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'Erro ao atualizar médico.'
+        })
+
+@app.route('/excluir_medico/<int:id>', methods=['POST'])
+@login_required
+def excluir_medico(id):
+    medico = db.session.get(Medico, id)
+    if not medico:
+        return jsonify({
+            'success': False,
+            'message': 'Médico não encontrado.'
+        })
+    
+    try:
+        db.session.delete(medico)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Médico excluído com sucesso!'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': 'Erro ao excluir médico.'
+        })
 
 def salvar_arquivo(arquivo):
     # Usa a pasta videos existente
