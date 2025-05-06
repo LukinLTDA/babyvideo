@@ -17,10 +17,10 @@ function mostrarNotificacao(mensagem, tipo = 'success') {
 
 // Função para enviar vídeo
 function enviarVideo() {
-    const form = document.getElementById('uploadForm');
+    const form = document.getElementById('formNovoVideo');
     const formData = new FormData(form);
     
-    fetch('/upload_video', {
+    fetch('/novo_video', {
         method: 'POST',
         body: formData
     })
@@ -28,7 +28,7 @@ function enviarVideo() {
     .then(data => {
         if (data.success) {
             // Fecha o modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadModal'));
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNovoVideo'));
             modal.hide();
             
             // Limpa o formulário
@@ -37,10 +37,10 @@ function enviarVideo() {
             // Mostra notificação de sucesso
             mostrarNotificacao('Vídeo enviado com sucesso!');
             
-            // Recarrega a página após 1 segundo
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // Adiciona o novo vídeo à lista
+            const listaVideos = document.getElementById('listaVideos');
+            const novoVideo = criarCardVideo(data.video);
+            listaVideos.insertAdjacentHTML('afterbegin', novoVideo);
         } else {
             mostrarNotificacao(data.message || 'Erro ao enviar vídeo', 'error');
         }
@@ -54,18 +54,23 @@ function enviarVideo() {
 // Função para criar card de vídeo
 function criarCardVideo(video) {
     return `
-        <div class="col-12 col-sm-6 col-lg-4">
+        <div class="col" data-video-id="${video.id}">
             <div class="card h-100">
-                <div class="card-body p-2">
-                    <video class="w-100 rounded" controls>
-                        <source src="${video.url}" type="video/mp4">
-                        Seu navegador não suporta o elemento de vídeo.
-                    </video>
-                    <div class="mt-2">
-                        <small class="text-muted d-block mb-1">
-                            <i class="fas fa-calendar me-1"></i>${new Date(video.data_upload).toLocaleString()}
+                <div class="card-body">
+                    <h6 class="card-title">${video.titulo}</h6>
+                    <p class="card-text small text-muted">${video.descricao || ''}</p>
+                    <div class="ratio ratio-16x9 mb-2">
+                        <video controls class="rounded">
+                            <source src="${video.url}" type="video/mp4">
+                            Seu navegador não suporta o elemento de vídeo.
+                        </video>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${new Date(video.created_at).toLocaleString()}
                         </small>
-                        <a href="${video.url}" download class="btn btn-sm btn-outline-primary w-100">
+                        <a href="${video.url}" download class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-download me-1"></i>Baixar
                         </a>
                     </div>
@@ -75,14 +80,14 @@ function criarCardVideo(video) {
     `;
 }
 
+// Função para lidar com o envio do novo vídeo
+function handleNovoVideo(event) {
+    event.preventDefault();
+    enviarVideo();
+    return false;
+}
+
 // Inicialização quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    // Adiciona listener para o formulário de upload
-    const uploadForm = document.getElementById('uploadForm');
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            enviarVideo();
-        });
-    }
+    // Não precisamos mais adicionar o listener aqui, pois já temos o onsubmit no HTML
 }); 
