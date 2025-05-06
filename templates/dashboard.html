@@ -123,9 +123,11 @@
                                                     onclick="navegarParaBabyVideo(this)">
                                                 <i class="fas fa-video me-1"></i>BabyVideo
                                             </button>
-                                            <button class="btn btn-sm btn-outline-info flex-grow-1" title="Nova Consulta">
+                                            <a href="{{ url_for('consulta', paciente_id=paciente.id) }}" 
+                                               class="btn btn-sm btn-outline-info flex-grow-1" 
+                                               title="Nova Consulta">
                                                 <i class="fas fa-calendar-plus me-1"></i>Consulta
-                                            </button>
+                                            </a>
                                         </div>
                                     </div>
                                 </div>
