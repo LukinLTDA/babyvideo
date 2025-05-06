@@ -52,3 +52,19 @@ class Video(db.Model):
             'created_at': self.created_at.isoformat(),
             'paciente_id': self.paciente_id
         }
+
+class Medico(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    crm = db.Column(db.String(20), unique=True, nullable=False)
+    especialidade = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'crm': self.crm,
+            'especialidade': self.especialidade
+        }
