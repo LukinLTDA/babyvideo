@@ -89,6 +89,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form id="formNovoVideo" onsubmit="return handleNovoVideo(event)">
+                {{ csrf_token() }}
                 <input type="hidden" name="paciente_id" value="{{ paciente.id }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Vídeo</h5>

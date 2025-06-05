@@ -17,6 +17,11 @@ function mostrarNotificacao(mensagem, tipo = 'success') {
     bsToast.show();
 }
 
+function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Função para avançar para a seção da câmera
 function avancarParaCamera() {
     const form = document.getElementById('formConsulta');
@@ -131,6 +136,9 @@ function salvarConsulta(event) {
     
     fetch('/salvar_consulta', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => response.json())

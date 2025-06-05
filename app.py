@@ -7,16 +7,29 @@ from models import db, User, Paciente, Video, Medico
 from datetime import datetime, timezone
 from sqlalchemy import text
 import uuid
+from flask_wtf import CSRFProtect
 
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'sua_chave_secreta_aqui')
+csrf = CSRFProtect()
+
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'mkv', 'webm'}
+
+def allowed_video(filename):
+    return '.' in filename and \
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+
+secret_key = os.getenv('SECRET_KEY')
+if not secret_key:
+    raise RuntimeError('SECRET_KEY not set')
+app.config['SECRET_KEY'] = secret_key
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Inicializa o banco de dados
 db.init_app(app)
+csrf.init_app(app)
 
 # Cria as tabelas se não existirem
 def init_db():
@@ -304,10 +317,10 @@ def babyvideo(paciente_id):
 def novo_video():
     if 'video' not in request.files:
         return jsonify({'success': False, 'message': 'Nenhum arquivo enviado'})
-    
+
     video = request.files['video']
-    if video.filename == '':
-        return jsonify({'success': False, 'message': 'Nenhum arquivo selecionado'})
+    if video.filename == '' or not allowed_video(video.filename):
+        return jsonify({'success': False, 'message': 'Arquivo de vídeo inválido'})
     
     if video:
         try:
@@ -341,7 +354,10 @@ def novo_video():
 @app.route('/videos_paciente')
 @login_required
 def videos_paciente():
-    paciente_id = request.args.get('paciente_id')
+    if session.get('tipo_usuario') == 'paciente':
+        paciente_id = session.get('paciente_id')
+    else:
+        paciente_id = request.args.get('paciente_id')
     videos = Video.query.filter_by(paciente_id=paciente_id).order_by(Video.created_at.desc()).all()
     return jsonify({
         'success': True,
@@ -352,6 +368,9 @@ def videos_paciente():
 @login_required
 def excluir_video(video_id):
     video = Video.query.get_or_404(video_id)
+    if session.get('tipo_usuario') == 'paciente' and video.paciente_id != session.get('paciente_id'):
+        return jsonify({'success': False, 'message': 'Não autorizado'}), 403
+
     db.session.delete(video)
     db.session.commit()
     return jsonify({'success': True})
@@ -366,6 +385,14 @@ def consulta(paciente_id):
     
     medicos = Medico.query.order_by(Medico.nome).all()
     return render_template('consulta.html', paciente=paciente, medicos=medicos)
+
+
+@app.route('/salvar_consulta', methods=['POST'])
+@login_required
+def salvar_consulta():
+    # Endpoint de exemplo para gravar dados de consulta
+    # Implementação real dependerá da modelagem de dados
+    return jsonify({'success': True})
 
 @app.route('/novo_medico', methods=['POST'])
 @login_required
@@ -494,4 +521,5 @@ def salvar_arquivo(arquivo):
     return f"/static/videos/{nome_arquivo}"
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    debug = os.getenv("FLASK_DEBUG") == "1"
+    app.run(debug=debug)

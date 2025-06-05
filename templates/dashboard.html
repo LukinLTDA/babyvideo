@@ -146,6 +146,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('novo_paciente') }}" onsubmit="return handleNovoPaciente(event)">
+                {{ csrf_token() }}
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="fas fa-user-plus me-2"></i>Novo Paciente
@@ -191,6 +192,7 @@
             </div>
             <div class="modal-body">
                 <form id="formEditarPaciente">
+                    {{ csrf_token() }}
                     <input type="hidden" id="edit_paciente_id" name="id">
                     <div class="mb-3">
                         <label for="edit_nome" class="form-label">Nome</label>

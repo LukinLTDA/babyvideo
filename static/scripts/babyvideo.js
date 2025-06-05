@@ -1,6 +1,6 @@
 // Função para mostrar notificações
 function mostrarNotificacao(mensagem, tipo = 'success') {
-    const toast = document.getElementById('toast');
+    const toast = document.getElementById('toastNotificacao');
     const toastBody = toast.querySelector('.toast-body');
     const toastIcon = toast.querySelector('.fas');
     
@@ -15,6 +15,11 @@ function mostrarNotificacao(mensagem, tipo = 'success') {
     bsToast.show();
 }
 
+function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Função para enviar vídeo
 function enviarVideo() {
     const form = document.getElementById('formNovoVideo');
@@ -22,6 +27,9 @@ function enviarVideo() {
     
     fetch('/novo_video', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => response.json())
@@ -85,6 +93,36 @@ function handleNovoVideo(event) {
     event.preventDefault();
     enviarVideo();
     return false;
+}
+
+// Função para excluir um vídeo
+function excluirVideo(id) {
+    if (!confirm('Tem certeza que deseja excluir este vídeo?')) {
+        return;
+    }
+
+    fetch(`/excluir_video/${id}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const card = document.querySelector(`[data-video-id="${id}"]`);
+            if (card) {
+                card.remove();
+            }
+            mostrarNotificacao('Vídeo excluído com sucesso!');
+        } else {
+            mostrarNotificacao(data.message || 'Erro ao excluir vídeo', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao excluir vídeo:', error);
+        mostrarNotificacao('Erro ao excluir vídeo', 'error');
+    });
 }
 
 // Inicialização quando o documento estiver pronto

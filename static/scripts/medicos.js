@@ -15,6 +15,11 @@ function mostrarNotificacao(mensagem, tipo = 'success') {
     bsToast.show();
 }
 
+function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Função para lidar com o novo médico
 function handleNovoMedico(event) {
     event.preventDefault();
@@ -24,6 +29,9 @@ function handleNovoMedico(event) {
     
     fetch('/novo_medico', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => response.json())
@@ -83,6 +91,9 @@ function handleEditarMedico(event) {
     
     fetch('/editar_medico', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => response.json())
@@ -113,7 +124,7 @@ function handleEditarMedico(event) {
 
 // Função para confirmar exclusão
 function confirmarExclusao(id, nome) {
-    document.getElementById('nomeMedicoExclusao').textContent = nome;
+    document.getElementById('nomeMedicoExclusao').textContent = decodeURIComponent(nome);
     document.getElementById('btnConfirmarExclusao').onclick = () => excluirMedico(id);
     
     const modal = new bootstrap.Modal(document.getElementById('modalConfirmacaoExclusao'));
@@ -123,7 +134,10 @@ function confirmarExclusao(id, nome) {
 // Função para excluir médico
 function excluirMedico(id) {
     fetch(`/excluir_medico/${id}`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        }
     })
     .then(response => response.json())
     .then(data => {
