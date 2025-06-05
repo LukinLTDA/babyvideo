@@ -26,6 +26,7 @@
                 <div class="card-body">
                     <h5 class="card-title text-center">Nova Consulta</h5>
                     <form id="formConsulta">
+                        {{ csrf_token() }}
                         <input type="hidden" name="paciente_id" value="{{ paciente.id }}">
                         <div class="mb-3">
                             <label for="medico_id" class="form-label">Médico</label>

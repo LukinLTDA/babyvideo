@@ -20,6 +20,11 @@ function mostrarNotificacao(mensagem, tipo = 'success') {
     bsToast.show();
 }
 
+function getCSRFToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
 // Função para abrir o modal de edição
 function editarPaciente(id) {
     // Converte o ID para número
@@ -57,7 +62,7 @@ function confirmarExclusao(id, nome) {
     // Armazena o ID do paciente para uso posterior
     document.getElementById('btnConfirmarExclusao').dataset.pacienteId = id;
     // Atualiza o nome do paciente no modal
-    document.getElementById('nomePacienteExclusao').textContent = nome;
+    document.getElementById('nomePacienteExclusao').textContent = decodeURIComponent(nome);
     // Abre o modal
     new bootstrap.Modal(document.getElementById('modalConfirmacaoExclusao')).show();
 }
@@ -71,6 +76,9 @@ function handleNovoPaciente(event) {
     
     fetch('/novo_paciente', {
         method: 'POST',
+        headers: {
+            'X-CSRFToken': getCSRFToken()
+        },
         body: formData
     })
     .then(response => response.json())
@@ -109,15 +117,21 @@ function handleNovoPaciente(event) {
 }
 
 // Função auxiliar para criar o card do paciente
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 function criarCardPaciente(paciente) {
     const col = document.createElement('div');
     col.className = 'col';
-    
+
     col.innerHTML = `
         <div class="card h-100 border-0 shadow-sm" data-paciente-id="${paciente.id}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <h5 class="card-title mb-0">${paciente.nome}</h5>
+                    <h5 class="card-title mb-0">${escapeHtml(paciente.nome)}</h5>
                     <span class="badge bg-light text-dark">
                         <i class="fas fa-user me-1"></i>Paciente
                     </span>
@@ -125,15 +139,15 @@ function criarCardPaciente(paciente) {
                 <div class="card-text">
                     <p class="mb-2">
                         <i class="fas fa-id-card me-2 text-primary"></i>
-                        <span data-cpf>${paciente.cpf}</span>
+                        <span data-cpf>${escapeHtml(paciente.cpf)}</span>
                     </p>
                     <p class="mb-2">
                         <i class="fas fa-phone me-2 text-success"></i>
-                        <span data-telefone>${paciente.telefone}</span>
+                        <span data-telefone>${escapeHtml(paciente.telefone)}</span>
                     </p>
                     <p class="mb-2">
                         <i class="fas fa-calendar me-2 text-info"></i>
-                        <span data-nascimento>${paciente.nascimento}</span>
+                        <span data-nascimento>${escapeHtml(paciente.nascimento)}</span>
                     </p>
                 </div>
             </div>
@@ -151,7 +165,7 @@ function criarCardPaciente(paciente) {
                         </button>
                         <button class="btn btn-sm btn-outline-danger flex-grow-1" 
                                 title="Excluir Paciente"
-                                onclick="confirmarExclusao('${paciente.id}', '${paciente.nome}')">
+                                onclick="confirmarExclusao('${paciente.id}', '${encodeURIComponent(paciente.nome)}')">
                             <i class="fas fa-trash me-1"></i>Excluir
                         </button>
                         <button class="btn btn-sm btn-outline-success flex-grow-1" title="Adicionar BabyVideo">
@@ -219,6 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify(data)
         })
@@ -257,7 +272,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const pacienteId = this.dataset.pacienteId;
         
         fetch(`/excluir_paciente/${pacienteId}`, {
-            method: 'POST'
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken()
+            }
         })
         .then(response => response.json())
         .then(data => {
