@@ -1,0 +1,49 @@
+/* Estilos para o Modal de Termos */
+.modal-content {
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+}
+
+.modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 15px 15px 0 0;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body .alert {
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.modal-body ul {
+    padding-left: 20px;
+}
+
+.modal-body li {
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+#timer {
+    font-weight: bold;
+    color: #dc3545;
+}
+
+#btnContinuar {
+    min-width: 120px;
+    transition: all 0.3s ease;
+}
+
+#btnContinuar:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+#btnContinuar:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+} 

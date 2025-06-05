@@ -8,8 +8,14 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 import uuid
 from flask_wtf import CSRFProtect
+import boto3
+from botocore.config import Config
 
-load_dotenv()
+# Carrega as variáveis de ambiente do arquivo .env
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
+
+# Verifica se as variáveis de ambiente foram carregadas
 
 app = Flask(__name__)
 csrf = CSRFProtect()
@@ -316,16 +322,20 @@ def babyvideo(paciente_id):
 @login_required
 def novo_video():
     if 'video' not in request.files:
+        print("Erro: Nenhum arquivo enviado")
         return jsonify({'success': False, 'message': 'Nenhum arquivo enviado'})
 
     video = request.files['video']
     if video.filename == '' or not allowed_video(video.filename):
+        print(f"Erro: Arquivo de vídeo inválido - {video.filename}")
         return jsonify({'success': False, 'message': 'Arquivo de vídeo inválido'})
     
     if video:
         try:
+            print("Iniciando upload do vídeo...")
             # Salva o arquivo e obtém a URL
             url = salvar_arquivo(video)
+            print(f"URL do vídeo gerada: {url}")
             
             # Cria o novo vídeo no banco de dados
             novo_video = Video(
@@ -337,12 +347,14 @@ def novo_video():
             
             db.session.add(novo_video)
             db.session.commit()
+            print("Vídeo salvo no banco de dados com sucesso")
             
             return jsonify({
                 'success': True,
                 'video': novo_video.to_dict()
             })
         except Exception as e:
+            print(f"Erro ao processar o vídeo: {str(e)}")
             db.session.rollback()
             return jsonify({
                 'success': False,
@@ -505,20 +517,60 @@ def excluir_medico(id):
         })
 
 def salvar_arquivo(arquivo):
-    # Usa a pasta videos existente
-    upload_dir = os.path.join(app.static_folder, 'videos')
-    os.makedirs(upload_dir, exist_ok=True)
+    print("Iniciando configuração do cliente S3...")
     
+    # Verifica se todas as variáveis de ambiente necessárias estão presentes
+    required_env_vars = [
+        'CLOUDFLARE_ACCOUNT_ID',
+        'CLOUDFLARE_PUBLIC_ACCESS_KEY',
+        'CLOUDFLARE_SECRET_ACCESS_KEY',
+        'CLOUDFLARE_BUCKET_NAME',
+        'CLOUDFLARE_PUBLIC_URL_STORAGE'
+    ]
+    
+    missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+    if missing_vars:
+        raise Exception(f"Variáveis de ambiente ausentes: {', '.join(missing_vars)}")
+    
+    print("Variáveis de ambiente verificadas com sucesso")
+    
+    # Configuração do cliente S3 para Cloudflare R2
+    s3_client = boto3.client(
+        's3',
+        endpoint_url=f'https://{os.getenv("CLOUDFLARE_ACCOUNT_ID")}.r2.cloudflarestorage.com',
+        aws_access_key_id=os.getenv('CLOUDFLARE_PUBLIC_ACCESS_KEY'),
+        aws_secret_access_key=os.getenv('CLOUDFLARE_SECRET_ACCESS_KEY'),
+        config=Config(signature_version='s3v4'),
+        region_name='auto'
+    )
+    print("Cliente S3 configurado com sucesso")
+
     # Gera um nome único para o arquivo
     extensao = os.path.splitext(arquivo.filename)[1]
     nome_arquivo = f"{uuid.uuid4()}{extensao}"
     
-    # Salva o arquivo
-    caminho_arquivo = os.path.join(upload_dir, nome_arquivo)
-    arquivo.save(caminho_arquivo)
+    # Define o caminho no bucket
+    caminho_bucket = f"babyvideos/{nome_arquivo}"
+    print(f"Caminho do bucket: {caminho_bucket}")
     
-    # Retorna a URL relativa do arquivo
-    return f"/static/videos/{nome_arquivo}"
+    try:
+        print("Iniciando upload do arquivo para o R2...")
+        # Faz upload do arquivo para o R2
+        s3_client.upload_fileobj(
+            arquivo,
+            os.getenv('CLOUDFLARE_BUCKET_NAME'),
+            caminho_bucket,
+            ExtraArgs={'ContentType': arquivo.content_type}
+        )
+        print("Upload concluído com sucesso")
+        
+        # Retorna a URL pública do arquivo
+        url = f"https://{os.getenv('CLOUDFLARE_PUBLIC_URL_STORAGE')}/{caminho_bucket}"
+        print(f"URL pública gerada: {url}")
+        return url
+    except Exception as e:
+        print(f"Erro detalhado ao fazer upload: {str(e)}")
+        raise Exception(f"Erro ao fazer upload do arquivo: {str(e)}")
 
 if __name__ == '__main__':
     debug = os.getenv("FLASK_DEBUG") == "1"
