@@ -18,7 +18,7 @@
                 <div id="form-clinica">
                     <h2 class="text-center h4 mb-4">Login Clínica</h2>
                     <form method="POST" action="{{ url_for('login') }}">
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="tipo" value="clinica">
                         <div class="mb-3">
                             <label for="username" class="form-label">Nome de Usuário</label>
@@ -40,7 +40,7 @@
                 <div id="form-paciente" style="display: none;">
                     <h2 class="text-center h4 mb-4">Login Paciente</h2>
                     <form method="POST" action="{{ url_for('login') }}">
-                        {{ csrf_token() }}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="tipo" value="paciente">
                         <div class="mb-3">
                             <label for="cpf" class="form-label">CPF</label>

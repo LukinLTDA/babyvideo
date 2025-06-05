@@ -12,30 +12,16 @@
                     <h2 class="h3 mb-1">
                         <i class="fas fa-user-circle me-2 text-primary"></i>Dashboard do Paciente
                     </h2>
-                    <p class="text-muted mb-0">Bem-vindo(a), {{ paciente.nome }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Informações do Paciente e Vídeos -->
-    <div class="row g-3">
-        <div class="col-12 col-md-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="card-title mb-3">
-                        <i class="fas fa-info-circle me-2 text-primary"></i>Informações do Paciente
-                    </h5>
-                    <div class="card-text">
-                        <p class="mb-3">
+                    <div class="d-flex flex-wrap gap-3 mt-2">
+                        <p class="mb-0">
                             <i class="fas fa-id-card me-2 text-primary"></i>
                             <strong>CPF:</strong> {{ paciente.cpf }}
                         </p>
-                        <p class="mb-3">
+                        <p class="mb-0">
                             <i class="fas fa-phone me-2 text-success"></i>
                             <strong>Telefone:</strong> {{ paciente.telefone }}
                         </p>
-                        <p class="mb-3">
+                        <p class="mb-0">
                             <i class="fas fa-calendar me-2 text-info"></i>
                             <strong>Data de Nascimento:</strong> {{ paciente.nascimento.strftime('%d/%m/%Y') }}
                         </p>
@@ -43,7 +29,11 @@
                 </div>
             </div>
         </div>
-        <div class="col-12 col-md-8">
+    </div>
+
+    <!-- Informações do Paciente e Vídeos -->
+    <div class="row g-3">
+        <div class="col-12 col-md-8 col-lg-12">
             <div class="card shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title mb-3">
@@ -82,38 +72,6 @@
     </div>
 </div>
 
-<!-- Modal de Novo Vídeo -->
-<div class="modal fade" id="modalNovoVideo" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form id="formNovoVideo" onsubmit="return handleNovoVideo(event)">
-                <input type="hidden" name="paciente_id" value="{{ paciente.id }}">
-                <div class="modal-header">
-                    <h5 class="modal-title">Novo Vídeo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="titulo" class="form-label">Título</label>
-                        <input type="text" class="form-control" id="titulo" name="titulo" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="descricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="video" class="form-label">Arquivo de Vídeo</label>
-                        <input type="file" class="form-control" id="video" name="video" accept="video/*" required>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- Toast de Notificação -->
 <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
