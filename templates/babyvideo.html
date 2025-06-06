@@ -12,9 +12,11 @@
                     <h2 class="mb-1">BabyVideo</h2>
                     <p class="text-muted mb-0">Paciente: {{ paciente.nome }}</p>
                 </div>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar ao Dashboard
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -56,8 +58,12 @@
                         <div class="col" data-video-id="{{ video.id }}">
                             <div class="card h-100">
                                 <div class="card-body">
-                                    <h5 class="card-title">{{ video.titulo }}</h5>
-                                    <p class="card-text">{{ video.descricao or '' }}</p>
+                                    {% if video.titulo %}
+                                    <h5 class="card-title">Título: {{ video.titulo }}</h5>
+                                    {% endif %}
+                                    {% if video.descricao %}
+                                    <p class="card-text">Descrição: {{ video.descricao }}</p>
+                                    {% endif %}
                                     <div class="ratio ratio-16x9 mb-3">
                                         <video controls>
                                             <source src="{{ video.url }}" type="video/mp4">
@@ -89,7 +95,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form id="formNovoVideo" onsubmit="return handleNovoVideo(event)">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="paciente_id" value="{{ paciente.id }}">
                 <div class="modal-header">
                     <h5 class="modal-title">Novo Vídeo</h5>
@@ -97,11 +103,11 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="titulo" class="form-label">Título</label>
-                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                        <label for="titulo" class="form-label">Título:</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo">
                     </div>
                     <div class="mb-3">
-                        <label for="descricao" class="form-label">Descrição</label>
+                        <label for="descricao" class="form-label">Descrição:</label>
                         <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
@@ -114,6 +120,28 @@
                     <button type="submit" class="btn btn-primary">Salvar</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalConfirmacaoExclusao" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2 text-danger"></i>Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o vídeo <strong id="tituloVideoExclusao"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">Sim, Excluir</button>
+            </div>
         </div>
     </div>
 </div>

@@ -168,12 +168,17 @@ function criarCardPaciente(paciente) {
                                 onclick="confirmarExclusao('${paciente.id}', '${encodeURIComponent(paciente.nome)}')">
                             <i class="fas fa-trash me-1"></i>Excluir
                         </button>
-                        <button class="btn btn-sm btn-outline-success flex-grow-1" title="Adicionar BabyVideo">
+                        <button class="btn btn-sm btn-outline-success flex-grow-1" 
+                                title="Adicionar BabyVideo"
+                                data-babyvideo-url="/babyvideo/${paciente.id}"
+                                onclick="navegarParaBabyVideo(this)">
                             <i class="fas fa-video me-1"></i>BabyVideo
                         </button>
-                        <button class="btn btn-sm btn-outline-info flex-grow-1" title="Nova Consulta">
+                        <a href="/consulta/${paciente.id}" 
+                           class="btn btn-sm btn-outline-info flex-grow-1" 
+                           title="Nova Consulta">
                             <i class="fas fa-calendar-plus me-1"></i>Consulta
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>

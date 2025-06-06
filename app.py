@@ -4,12 +4,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
 from models import db, User, Paciente, Video, Medico
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import text
 import uuid
 from flask_wtf import CSRFProtect
 import boto3
 from botocore.config import Config
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 # Carrega as variáveis de ambiente do arquivo .env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -572,6 +574,44 @@ def salvar_arquivo(arquivo):
         print(f"Erro detalhado ao fazer upload: {str(e)}")
         raise Exception(f"Erro ao fazer upload do arquivo: {str(e)}")
 
+def delete_old_videos():
+    """Delete videos that are older than 7 days"""
+    with app.app_context():
+        try:
+            # Calculate the date 7 days ago
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+            
+            # Find and delete old videos
+            old_videos = Video.query.filter(Video.created_at < seven_days_ago).all()
+            
+            if old_videos:
+                print(f"Found {len(old_videos)} videos com 7 dias:")
+                for video in old_videos:
+                    print(f"- Video ID: {video.id}, Created at: {video.created_at}")
+                    db.session.delete(video)
+                
+                db.session.commit()
+                print(f" {len(old_videos)} Videos antigos deletados com sucesso")
+            else:
+                print("Nenhum video de 7 dias encontrado")
+        except Exception as e:
+            print(f"Erro ao deletar videos: {str(e)}")
+            db.session.rollback()
+
+# Initialize the scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=delete_old_videos,
+    trigger=IntervalTrigger(hours=24),  # Run every 24 hours
+    id='delete_old_videos',
+    name='Delete videos older than 7 days',
+    replace_existing=True
+)
+
+# Start the scheduler
+scheduler.start()
+print("Scheduler iniciado - Irá ocorre uma verificação dos videos antigos em 24hrs!")
+
 if __name__ == '__main__':
     debug = os.getenv("FLASK_DEBUG") == "1"
-    app.run(debug=debug)
+    app.run(debug=True, host='0.0.0.0', port=5000)

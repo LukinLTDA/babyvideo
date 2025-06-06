@@ -7,13 +7,7 @@
     <!-- Cabeçalho -->
     <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h2 class="h3 mb-1">
-                        <i class="fas fa-hospital me-2 text-primary"></i>Dashboard da Clínica
-                    </h2>
-                    <p class="text-muted mb-0">Bem-vindo(a), {{ current_user.username }}</p>
-                </div>
+            <div class="d-flex justify-content-end">
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNovoPaciente">
                     <i class="fas fa-plus me-2"></i>Novo Paciente
                 </button>
@@ -69,12 +63,22 @@
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-users me-2 text-primary"></i>Lista de Pacientes
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-users me-2 text-primary"></i>Lista de Pacientes
+                        </h5>
+                        <div class="search-container" style="width: 700px;">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="searchPacientes" class="form-control" placeholder="Buscar por Nome ou CPF...">
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" id="pacientesContainer">
                         {% for paciente in pacientes %}
                         <div class="col">
                             <div class="card h-100 border-0 shadow-sm" data-paciente-id="{{ paciente.id }}">
@@ -146,7 +150,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" action="{{ url_for('novo_paciente') }}" onsubmit="return handleNovoPaciente(event)">
-                {{ csrf_token() }}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="modal-header">
                     <h5 class="modal-title">
                         <i class="fas fa-user-plus me-2"></i>Novo Paciente
@@ -192,7 +196,7 @@
             </div>
             <div class="modal-body">
                 <form id="formEditarPaciente">
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" id="edit_paciente_id" name="id">
                     <div class="mb-3">
                         <label for="edit_nome" class="form-label">Nome</label>
@@ -279,10 +283,30 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='scripts/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/babyvideo.js') }}"></script> 
 <script>
 function navegarParaBabyVideo(button) {
     const url = button.getAttribute('data-babyvideo-url');
-    window.location.href = url;
+    if (url) {
+        window.location.href = url;
+    }
 }
+
+// Função para filtrar pacientes
+document.getElementById('searchPacientes').addEventListener('input', function(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    const pacientes = document.querySelectorAll('#pacientesContainer .col');
+    
+    pacientes.forEach(paciente => {
+        const nome = paciente.querySelector('.card-title').textContent.toLowerCase();
+        const cpf = paciente.querySelector('[data-cpf]').textContent.toLowerCase();
+        
+        if (nome.includes(searchTerm) || cpf.includes(searchTerm)) {
+            paciente.style.display = '';
+        } else {
+            paciente.style.display = 'none';
+        }
+    });
+});
 </script>
 {% endblock %}

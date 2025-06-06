@@ -15,14 +15,20 @@
                     <h6>Importante!</h6>
                     <p>Por favor, leia atentamente os seguintes termos:</p>
                     <ul>
-                        <li>Os vídeos enviados ficarão disponíveis por apenas 7 dias.</li>
+                        <li>Os vídeos disponibilizados ficarão disponíveis por apenas 7 dias.</li>
                         <li>É responsabilidade do(a) Sr(a) fazer o download dos vídeos dentro deste período.</li>
                         <li>Após 7 dias, os vídeos serão automaticamente excluídos e não poderão ser recuperados.</li>
                         <li>A clínica não se responsabiliza pela perda de vídeos após o período de 7 dias.</li>
                     </ul>
                 </div>
                 <div class="text-center mt-3">
-                    <p>Você poderá continuar em: <span id="timer">15</span> segundos</p>
+                    <p>Você poderá continuar em: <span id="timer">5</span> segundos</p>
+                </div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" id="aceitarTermos">
+                    <label class="form-check-label" for="aceitarTermos">
+                        Li e aceito os termos e condições acima!
+                    </label>
                 </div>
             </div>
             <div class="modal-footer">
@@ -66,15 +72,19 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title mb-3">
-                        <i class="fas fa-video me-2 text-primary"></i>Vídeos
+                        <i class="fas fa-video me-2 text-primary"></i>BabyVideos
                     </h5>
-                    <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3" id="listaVideos">
+                    <div class="row row-cols-1 row-cols-md-2 g-4" id="listaVideos">
                         {% for video in videos %}
                         <div class="col" data-video-id="{{ video.id }}">
                             <div class="card h-100">
                                 <div class="card-body">
-                                    <h6 class="card-title">{{ video.titulo }}</h6>
-                                    <p class="card-text small text-muted">{{ video.descricao or '' }}</p>
+                                    {% if video.titulo %}
+                                    <h6 class="card-title">Título: {{ video.titulo }}</h6>
+                                    {% endif %}
+                                    {% if video.descricao %}
+                                    <p class="card-text small text-muted">Descrição: {{ video.descricao }}</p>
+                                    {% endif %}
                                     <div class="ratio ratio-16x9 mb-2">
                                         <video controls class="rounded">
                                             <source src="{{ video.url }}" type="video/mp4">
