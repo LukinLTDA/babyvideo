@@ -1,0 +1,44 @@
+version: "3.7"
+
+services:
+  babyvideo:
+    image: babyvideo:latest
+    container_name: babyvideo
+    restart: always
+    environment:
+      - FLASK_ENV=production
+      - DB_URL=postgresql://postgres:aeg868g3b87fb783grbi8fgb78@postgres:5432/baby_video_db
+      - SECRET_KEY=a243234a9e61822e25cdb282eaea5ba85d0cf4e0d572ba5c
+      - CLOUDFLARE_PUBLIC_URL_STORAGE=storage.imagemaislaboratorio.com.br
+      - CLOUDFLARE_TOKEN=mi3TYFNfpyyVd1D8mQsyMBzUSRxrSP4Y1dKbqOjF
+      - CLOUDFLARE_PUBLIC_ACCESS_KEY=421072ad5662abf5ace3f8660c3c822b
+      - CLOUDFLARE_SECRET_ACCESS_KEY=6d19a154f74ba84edfd87034410828bdee0758c8a5f6b8f04485f50b3c38168d
+      - CLOUDFLARE_ACCOUNT_ID=b26dbae339f36de5139f8e8587f7cd7b
+      - CLOUDFLARE_BUCKET_NAME=imagemais-bucket-production
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.babyvideo.rule=Host(`babyvideo.imagemais.com.br`)
+        - traefik.http.routers.babyvideo.entrypoints=websecure
+        - traefik.http.routers.babyvideo.priority=1
+        - traefik.http.routers.babyvideo.tls.certresolver=buypassresolver
+        - traefik.http.routers.babyvideo.service=babyvideo
+        - traefik.http.services.babyvideo.loadbalancer.server.port=5000
+        - traefik.http.services.babyvideo.loadbalancer.passHostHeader=true
+    networks:
+      - network_public
+    volumes:
+      - babyvideo_data:/app
+
+networks:
+  network_public:
+    external: true
+    name: network_public
+
+volumes:
+  babyvideo_data: 

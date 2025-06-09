@@ -1,26 +1,25 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from dotenv import load_dotenv
-from models import db, User, Paciente, Video, Medico
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text, func
 from datetime import datetime, timezone, timedelta
-from sqlalchemy import text
 import uuid
 from flask_wtf import CSRFProtect
 import boto3
 from botocore.config import Config
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from flask_apscheduler import APScheduler
 
 # Carrega as variáveis de ambiente do arquivo .env
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(env_path)
 
-# Verifica se as variáveis de ambiente foram carregadas
-
 app = Flask(__name__)
 csrf = CSRFProtect()
+db = SQLAlchemy()
+scheduler = APScheduler()
 
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi', 'mkv', 'webm'}
 
@@ -28,9 +27,12 @@ def allowed_video(filename):
     return '.' in filename and \
         filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
+# Configuração do Flask
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
-    raise RuntimeError('SECRET_KEY not set')
+    print("AVISO: SECRET_KEY não encontrada nas variáveis de ambiente")
+    secret_key = 'chave-temporaria-para-desenvolvimento'  # Chave temporária para desenvolvimento
+
 app.config['SECRET_KEY'] = secret_key
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -39,32 +41,102 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 csrf.init_app(app)
 
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
+
+class Paciente(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    telefone = db.Column(db.String(20), nullable=False)
+    cpf = db.Column(db.String(14), unique=True, nullable=False)
+    nascimento = db.Column(db.Date, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    deleted_at = db.Column(db.DateTime(timezone=True))
+    videos = db.relationship('Video', backref='paciente', lazy=True)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+class Video(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(100), nullable=False)
+    descricao = db.Column(db.Text)
+    url = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    paciente_id = db.Column(db.Integer, db.ForeignKey('paciente.id'), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'titulo': self.titulo,
+            'descricao': self.descricao,
+            'url': self.url,
+            'created_at': self.created_at.isoformat(),
+            'paciente_id': self.paciente_id
+        }
+
+class Medico(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    crm = db.Column(db.String(20), unique=True, nullable=False)
+    especialidade = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'crm': self.crm,
+            'especialidade': self.especialidade
+        }
+
 # Cria as tabelas se não existirem
 def init_db():
     with app.app_context():
         try:
             # Verifica se as tabelas existem
             with db.engine.connect() as conn:
-                conn.execute(text("SELECT 1 FROM medico LIMIT 1"))
+                # Tenta acessar cada tabela
+                for table in ['user', 'paciente', 'video', 'medico']:
+                    try:
+                        conn.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
+                        print(f"Tabela {table} já existe!")
+                    except Exception:
+                        print(f"Tabela {table} não existe. Criando todas as tabelas...")
+                        db.create_all()
+                        print("Tabelas criadas com sucesso!")
+                        
+                        # Adiciona médicos de exemplo
+                        medicos_exemplo = [
+                            Medico(nome="Dr. João Silva", crm="12345-SP", especialidade="Pediatra"),
+                            Medico(nome="Dra. Maria Santos", crm="67890-SP", especialidade="Ginecologista"),
+                            Medico(nome="Dr. Pedro Oliveira", crm="54321-SP", especialidade="Clínico Geral")
+                        ]
+                        
+                        for medico in medicos_exemplo:
+                            if not Medico.query.filter_by(crm=medico.crm).first():
+                                db.session.add(medico)
+                        
+                        db.session.commit()
+                        print("Médicos de exemplo adicionados com sucesso!")
+                        break
                 conn.commit()
-        except Exception:
-            # Se não existirem, cria as tabelas
-            db.create_all()
-            print("Tabelas criadas com sucesso!")
-            
-            # Adiciona médicos de exemplo
-            medicos_exemplo = [
-                Medico(nome="Dr. João Silva", crm="12345-SP", especialidade="Pediatra"),
-                Medico(nome="Dra. Maria Santos", crm="67890-SP", especialidade="Ginecologista"),
-                Medico(nome="Dr. Pedro Oliveira", crm="54321-SP", especialidade="Clínico Geral")
-            ]
-            
-            for medico in medicos_exemplo:
-                if not Medico.query.filter_by(crm=medico.crm).first():
-                    db.session.add(medico)
-            
-            db.session.commit()
-            print("Médicos de exemplo adicionados com sucesso!")
+        except Exception as e:
+            print(f"Erro ao verificar/criar tabelas: {str(e)}")
+            raise e
 
 # Inicializa o banco de dados
 init_db()
@@ -532,30 +604,35 @@ def salvar_arquivo(arquivo):
     
     missing_vars = [var for var in required_env_vars if not os.getenv(var)]
     if missing_vars:
-        raise Exception(f"Variáveis de ambiente ausentes: {', '.join(missing_vars)}")
+        error_msg = f"Variáveis de ambiente ausentes: {', '.join(missing_vars)}"
+        print(f"ERRO: {error_msg}")
+        raise Exception(error_msg)
     
     print("Variáveis de ambiente verificadas com sucesso")
-    
-    # Configuração do cliente S3 para Cloudflare R2
-    s3_client = boto3.client(
-        's3',
-        endpoint_url=f'https://{os.getenv("CLOUDFLARE_ACCOUNT_ID")}.r2.cloudflarestorage.com',
-        aws_access_key_id=os.getenv('CLOUDFLARE_PUBLIC_ACCESS_KEY'),
-        aws_secret_access_key=os.getenv('CLOUDFLARE_SECRET_ACCESS_KEY'),
-        config=Config(signature_version='s3v4'),
-        region_name='auto'
-    )
-    print("Cliente S3 configurado com sucesso")
-
-    # Gera um nome único para o arquivo
-    extensao = os.path.splitext(arquivo.filename)[1]
-    nome_arquivo = f"{uuid.uuid4()}{extensao}"
-    
-    # Define o caminho no bucket
-    caminho_bucket = f"babyvideos/{nome_arquivo}"
-    print(f"Caminho do bucket: {caminho_bucket}")
+    print(f"Account ID: {os.getenv('CLOUDFLARE_ACCOUNT_ID')}")
+    print(f"Bucket Name: {os.getenv('CLOUDFLARE_BUCKET_NAME')}")
+    print(f"Public URL: {os.getenv('CLOUDFLARE_PUBLIC_URL_STORAGE')}")
     
     try:
+        # Configuração do cliente S3 para Cloudflare R2
+        s3_client = boto3.client(
+            's3',
+            endpoint_url=f'https://{os.getenv("CLOUDFLARE_ACCOUNT_ID")}.r2.cloudflarestorage.com',
+            aws_access_key_id=os.getenv('CLOUDFLARE_PUBLIC_ACCESS_KEY'),
+            aws_secret_access_key=os.getenv('CLOUDFLARE_SECRET_ACCESS_KEY'),
+            config=Config(signature_version='s3v4'),
+            region_name='auto'
+        )
+        print("Cliente S3 configurado com sucesso")
+
+        # Gera um nome único para o arquivo
+        extensao = os.path.splitext(arquivo.filename)[1]
+        nome_arquivo = f"{uuid.uuid4()}{extensao}"
+        
+        # Define o caminho no bucket
+        caminho_bucket = f"babyvideos/{nome_arquivo}"
+        print(f"Caminho do bucket: {caminho_bucket}")
+        
         print("Iniciando upload do arquivo para o R2...")
         # Faz upload do arquivo para o R2
         s3_client.upload_fileobj(
@@ -571,8 +648,12 @@ def salvar_arquivo(arquivo):
         print(f"URL pública gerada: {url}")
         return url
     except Exception as e:
-        print(f"Erro detalhado ao fazer upload: {str(e)}")
-        raise Exception(f"Erro ao fazer upload do arquivo: {str(e)}")
+        error_msg = f"Erro detalhado ao fazer upload: {str(e)}"
+        print(f"ERRO: {error_msg}")
+        print(f"Tipo do erro: {type(e).__name__}")
+        if hasattr(e, 'response'):
+            print(f"Resposta do erro: {e.response}")
+        raise Exception(error_msg)
 
 def delete_old_videos():
     """Delete videos that are older than 7 days"""
@@ -598,19 +679,13 @@ def delete_old_videos():
             print(f"Erro ao deletar videos: {str(e)}")
             db.session.rollback()
 
-# Initialize the scheduler
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=delete_old_videos,
-    trigger=IntervalTrigger(hours=24),  # Run every 24 hours
-    id='delete_old_videos',
-    name='Delete videos older than 7 days',
-    replace_existing=True
-)
-
-# Start the scheduler
+# Configuração do scheduler
+scheduler.init_app(app)
+scheduler.add_job(id='delete_old_videos',
+                 func=delete_old_videos,
+                 trigger='interval',
+                 hours=24)
 scheduler.start()
-print("Scheduler iniciado - Irá ocorre uma verificação dos videos antigos em 24hrs!")
 
 if __name__ == '__main__':
     debug = os.getenv("FLASK_DEBUG") == "1"
