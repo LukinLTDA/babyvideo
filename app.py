@@ -103,9 +103,27 @@ class Medico(db.Model):
             'especialidade': self.especialidade
         }
 
-# Cria as tabelas se não existirem
+class Laudo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    conteudo = db.Column(db.Text, nullable=False)
+    medico_id = db.Column(db.Integer, db.ForeignKey('medico.id'), nullable=False)
+    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    medico = db.relationship('Medico', backref=db.backref('laudos', lazy=True))
+
 def init_db():
+    """Inicializa o banco de dados"""
     with app.app_context():
+        # Verifica se a tabela de laudos existe
+        inspector = db.inspect(db.engine)
+        if 'laudo' not in inspector.get_table_names():
+            print("Criando tabela de laudos...")
+            db.create_all()
+            print("Tabela de laudos criada com sucesso!")
+        else:
+            print("Tabela de laudos já existe.")
+
         try:
             # Verifica se as tabelas existem
             with db.engine.connect() as conn:
@@ -472,7 +490,6 @@ def consulta(paciente_id):
     medicos = Medico.query.order_by(Medico.nome).all()
     return render_template('consulta.html', paciente=paciente, medicos=medicos)
 
-
 @app.route('/salvar_consulta', methods=['POST'])
 @login_required
 def salvar_consulta():
@@ -686,6 +703,77 @@ scheduler.add_job(id='delete_old_videos',
                  trigger='interval',
                  hours=24)
 scheduler.start()
+
+@app.route('/salvar_laudo', methods=['POST'])
+@login_required
+def salvar_laudo():
+    try:
+        data = request.get_json()
+        titulo = data.get('titulo')
+        conteudo = data.get('conteudo')
+        medico_id = data.get('medico_id')
+        
+        if not all([titulo, conteudo, medico_id]):
+            return jsonify({'success': False, 'message': 'Todos os campos são obrigatórios'})
+        
+        # Verifica se o médico existe
+        medico = Medico.query.get(medico_id)
+        if not medico:
+            return jsonify({'success': False, 'message': 'Médico não encontrado'})
+        
+        novo_laudo = Laudo(
+            titulo=titulo,
+            conteudo=conteudo,
+            medico_id=medico_id
+        )
+        
+        db.session.add(novo_laudo)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Laudo salvo com sucesso',
+            'laudo': {
+                'id': novo_laudo.id,
+                'titulo': novo_laudo.titulo,
+                'data_criacao': novo_laudo.data_criacao.strftime('%d/%m/%Y %H:%M')
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/laudo/<int:laudo_id>')
+@login_required
+def visualizar_laudo(laudo_id):
+    laudo = Laudo.query.get_or_404(laudo_id)
+    return jsonify({
+        'success': True,
+        'laudo': {
+            'id': laudo.id,
+            'titulo': laudo.titulo,
+            'conteudo': laudo.conteudo,
+            'data_criacao': laudo.data_criacao.strftime('%d/%m/%Y %H:%M')
+        }
+    })
+
+@app.route('/laudos_medico/<int:medico_id>')
+@login_required
+def laudos_medico(medico_id):
+    try:
+        laudos = Laudo.query.filter_by(medico_id=medico_id).order_by(Laudo.data_criacao.desc()).all()
+        return jsonify({
+            'success': True,
+            'laudos': [{
+                'id': laudo.id,
+                'titulo': laudo.titulo,
+                'conteudo': laudo.conteudo,
+                'data_criacao': laudo.data_criacao.strftime('%d/%m/%Y %H:%M')
+            } for laudo in laudos]
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     debug = os.getenv("FLASK_DEBUG") == "1"
