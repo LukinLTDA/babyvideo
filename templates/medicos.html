@@ -48,6 +48,12 @@
                                         <button class="btn btn-sm btn-outline-primary me-1" onclick="editarMedico('{{ medico.id }}')">
                                             <i class="fas fa-edit"></i>
                                         </button>
+                                        <button class="btn btn-sm btn-outline-info me-1" onclick="mascaralaudo('{{ medico.id }}')">
+                                            <i class="fas fa-clipboard"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-success me-1" onclick="visualizarLaudos('{{ medico.id }}')">
+                                            <i class="fas fa-file-medical"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-danger" onclick="confirmarExclusao('{{ medico.id }}', '{{ medico.nome|urlencode }}')">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -156,6 +162,73 @@
     </div>
 </div>
 
+<!-- Modal Mascaralaudo -->
+<div class="modal fade" id="mascaralaudoModal" tabindex="-1" aria-labelledby="mascaralaudoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mascaralaudoModalLabel">Máscara de Laudo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formMascaralaudo" onsubmit="event.preventDefault(); salvarMascaralaudo();">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="conteudo" class="form-label">Conteúdo</label>
+                        <textarea id="conteudo" name="conteudo"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="submit" class="btn btn-primary">Salvar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Visualização do Laudo -->
+<div class="modal fade" id="visualizarLaudoModal" tabindex="-1" aria-labelledby="visualizarLaudoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="visualizarLaudoModalLabel">Visualizar Laudo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="conteudoLaudo"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Lista de Laudos -->
+<div class="modal fade" id="listaLaudosModal" tabindex="-1" aria-labelledby="listaLaudosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="listaLaudosModalLabel">Laudos do Médico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="listaLaudos" class="accordion">
+                    <!-- Os laudos serão inseridos aqui dinamicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast de Notificação -->
 <div class="position-fixed top-0 end-0 p-3" style="z-index: 11">
     <div id="toastNotificacao" class="toast" role="alert" aria-live="assertive" aria-atomic="true" style="display: none;">
@@ -172,4 +245,16 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='scripts/medicos.js') }}"></script>
-{% endblock %} 
+<script src="https://cdn.tiny.cloud/1/xc1enwc11gccsrnw5d9feq5gkuourg4cxcbwb1tri700dipq/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    tinymce.init({
+        selector: '#conteudo',
+        plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+        toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+        height: 400
+    });
+</script>
+{% endblock %}
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"> 
